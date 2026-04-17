@@ -75,7 +75,8 @@ const MONSTERS = {
     name: 'Büyük Slime', emoji: '🫧',
     description: 'Yüksek HP, yavaş — Mini Boss',
     isBoss: false, isMinibow: true,
-    attackSpeed: 2800
+    attackSpeed: 2800,
+    unlockCharacter: 'archer'
   },
   6: {
     id: 6, chapter: 6, region: 'Slime Vadisi',
@@ -108,10 +109,9 @@ const MONSTERS = {
   10: {
     id: 10, chapter: 10, region: 'Slime Vadisi',
     name: 'Slime Kral', emoji: '👑',
-    description: 'Bölge Boss\'u — Okçu\'yu açar!',
+    description: 'Slime Vadisi Boss\'u!',
     isBoss: true, isMinibow: false,
-    attackSpeed: 3000,
-    unlockCharacter: 'archer'
+    attackSpeed: 3000
   },
 
   // ============ BÖLÜM 11-20: GOBLİN ORMANI ============

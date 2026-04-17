@@ -3,13 +3,14 @@
 // ============================================================
 
 function initUI() {
-  // ===== CANAVAR TIKLAMA =====
+
+  // ===== CANAVAR ALANINA TIKLAMA =====
   const monsterArea = document.getElementById('monster-area');
   if (monsterArea) {
     monsterArea.addEventListener('click', () => {
       if (!gameState.battle.defeated) {
         playerClickMonster();
-        // Sallantı animasyonu
+        // Ek shake efekti (showSlashEffect'in yanında)
         const monsterEl = document.getElementById('monster-sprite');
         if (monsterEl) {
           monsterEl.classList.add('shake');
@@ -19,60 +20,45 @@ function initUI() {
     });
   }
 
-  // ===== KARAKTER İKON TIKLAMA =====
+  // ===== KARAKTER WRAPPER — TEK EVENT NOKTASI =====
+  // Tüm karakter etkileşimi (skill kullan, canlandır, ekip aç) burada yönetilir.
+  // Bu şekilde skill mini-icon'un stopPropagation sorunu ortadan kalkar.
   for (const charId of ACTIVE_CHARACTER_IDS) {
-    const icon = document.getElementById(`char-icon-${charId}`);
-    if (!icon) continue;
+    const wrapper = document.getElementById(`char-wrapper-${charId}`);
+    if (!wrapper) continue;
 
-    icon.addEventListener('click', (e) => {
-      e.stopPropagation();
+    wrapper.addEventListener('click', (e) => {
       const char = gameState.characters[charId];
-      if (!char.unlocked) return;
+      if (!char || !char.unlocked) return;
 
+      // Skill mini-icon'a tıklandıysa → skill kullan
+      if (e.target.closest(`#skill-icon-${charId}`)) {
+        if (!char.isDead && char.currentMana >= CHARACTERS[charId].skill.manaCost) {
+          useSkill(charId);
+        }
+        return;
+      }
+
+      // Canlanmaya hazırsa → canlandır (ikon tıklaması)
       if (char.isDead && char.reviveReady) {
         reviveCharacter(charId);
         renderAll();
         return;
       }
 
-      // Skill kullan (mana doluysa)
-      const charData = CHARACTERS[charId];
-      const skill = charData.skill;
-      if (char.currentMana >= skill.manaCost && !char.isDead) {
-        useSkill(charId);
-        return;
-      }
+      // Ölüyse ama henüz hazır değilse → hiç event verme
+      if (char.isDead) return;
 
-      // Yoksa detay panel aç
+      // Aksi hâlde → ekip panelini aç + bu karakteri seç
       openTeamPanel();
       setTimeout(() => selectCharacter(charId), 50);
     });
   }
 
-  // ===== CHAPTER SELECTOR =====
-  const chapterBtn = document.getElementById('chapter-select-btn');
-  if (chapterBtn) {
-    chapterBtn.addEventListener('click', openChapterModal);
-  }
-
-  const chapterModalClose = document.getElementById('chapter-modal-close');
-  if (chapterModalClose) {
-    chapterModalClose.addEventListener('click', closeChapterModal);
-  }
-
-  const chapterModalOverlay = document.getElementById('chapter-modal');
-  if (chapterModalOverlay) {
-    chapterModalOverlay.addEventListener('click', (e) => {
-      if (e.target === chapterModalOverlay) closeChapterModal();
-    });
-  }
-
-  // ===== EKİP PANELİ =====
+  // ===== EKİP PANELİ BUTONU =====
   const teamBtn = document.getElementById('team-btn');
   if (teamBtn) {
-    teamBtn.addEventListener('click', () => {
-      openTeamPanel();
-    });
+    teamBtn.addEventListener('click', openTeamPanel);
   }
 
   const teamClose = document.getElementById('team-panel-close');
@@ -99,20 +85,60 @@ function initUI() {
     restartBtn.addEventListener('click', restartBattle);
   }
 
-  // ===== KAYDET BUTONU =====
+  // ===== UPGRADE TOAST KAPAT =====
+  const utoastClose = document.getElementById('utoast-close');
+  if (utoastClose) {
+    utoastClose.addEventListener('click', () => {
+      hideUpgradeToast();
+      // 30sn snooze
+      upgradeToastSnoozed      = true;
+      upgradeToastSnoozeUntil  = Date.now() + 30000;
+    });
+  }
+
+  // ===== CHAPTER UNLOCK TOAST KAPAT =====
+  const cuttoastClose = document.getElementById('cuttoast-close');
+  if (cuttoastClose) {
+    cuttoastClose.addEventListener('click', hideChapterUnlockToast);
+  }
+
+  // ===== KAYDET =====
   const saveBtn = document.getElementById('save-btn');
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
       const ok = saveGame(gameState);
-      showNotification(ok ? '💾 Oyun kaydedildi!' : '❌ Kayıt başarısız!', ok ? 'info' : 'error');
+      showNotification(ok ? '💾 Kaydedildi!' : '❌ Kayıt başarısız!', ok ? 'info' : 'error');
+      if (ok) {
+        saveBtn.textContent = '✅';
+        setTimeout(() => { saveBtn.textContent = '💾'; }, 1500);
+      }
     });
   }
 
-  // ===== KAYDET SIFIRLAMA =====
+  // ===== SIFIRLA (iki adımlı onay — confirm() yerine) =====
+  let resetPending = false;
+  let resetTimer = null;
   const resetBtn = document.getElementById('reset-btn');
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
-      if (confirm('Tüm ilerleme silinecek. Emin misin?')) {
+      if (!resetPending) {
+        // İlk tıklama: onay bekle
+        resetPending = true;
+        resetBtn.textContent = '⚠️';
+        resetBtn.title = 'Tekrar tıkla → SİL';
+        resetBtn.style.borderColor = '#e05252';
+        resetBtn.style.color = '#e05252';
+        resetTimer = setTimeout(() => {
+          // 3 saniye içinde onaylanmadı → iptal
+          resetPending = false;
+          resetBtn.textContent = '🗑️';
+          resetBtn.title = 'Sıfırla';
+          resetBtn.style.borderColor = '';
+          resetBtn.style.color = '';
+        }, 3000);
+      } else {
+        // İkinci tıklama: sıfırla
+        clearTimeout(resetTimer);
         localStorage.removeItem(SAVE_KEY);
         location.reload();
       }

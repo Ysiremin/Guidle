@@ -8,13 +8,11 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- ANA OYUN EKLENİ -->
   <div id="game-root">
 
     <!-- ÜST BAR -->
     <header id="top-bar">
       <div class="top-bar-left">
-        <div id="current-chapter-display">Bölüm 1</div>
         <div id="total-level">Güç: 1</div>
       </div>
 
@@ -43,17 +41,35 @@
       </div>
     </header>
 
+    <!-- CHAPTER BAR -->
+    <nav id="chapter-bar">
+      <div id="chapter-bar-track">
+        <!-- JS tarafından doldurulur -->
+      </div>
+    </nav>
+
     <!-- SAVAŞ ALANI -->
     <main id="battle-area">
       <div id="region-name">Slime Vadisi — Bölüm 1</div>
       <div id="active-effects"></div>
+
+      <!-- Boss Timer -->
+      <div id="boss-timer-wrap" class="hidden">
+        <div class="boss-timer-header">
+          <span class="boss-timer-label">⚔️ Boss Savaşı — Süre</span>
+          <span class="boss-timer-time" id="boss-timer-time">2:00</span>
+        </div>
+        <div class="boss-timer-track">
+          <div id="boss-timer-bar" style="width:100%"></div>
+        </div>
+      </div>
 
       <!-- Canavar -->
       <div id="monster-area">
         <div id="monster-sprite">
           <div id="monster-tag" class="monster-tag"></div>
           <div id="monster-emoji-wrap">
-            <div id="monster-emoji">🟢</div>
+            <div id="monster-emoji">🫧</div>
           </div>
           <div id="monster-name">Küçük Yeşil Slime</div>
           <div class="monster-hp-wrap">
@@ -71,54 +87,77 @@
 
     <!-- ALT PANEL — KARAKTERLER -->
     <footer id="bottom-panel">
+      <!-- Karakter wrapperları (portre ikonu + altında barlar) -->
       <div id="char-row">
-        <div class="char-icon" id="char-icon-warrior">
-          <div class="char-dps">— DPS</div>
-          <div class="char-portrait">🧙</div>
-          <div class="char-name">Savaşçı</div>
-          <div class="char-level">Lv.1</div>
-          <div class="char-bars">
+
+        <div class="char-wrapper" id="char-wrapper-warrior">
+          <div class="skill-mini-icon hidden" id="skill-icon-warrior"></div>
+          <div class="char-icon" id="char-icon-warrior">
+            <div class="char-portrait">🛡️</div>
+            <div class="char-name-level">
+              <span class="char-name">Savaşçı</span>
+              <span class="char-level">Lv.1</span>
+            </div>
+          </div>
+          <div class="char-bars-outer">
             <div class="char-hp-bar-wrap"><div class="char-hp-bar" style="width:100%"></div></div>
             <div class="char-mana-bar-wrap"><div class="char-mana-bar" style="width:0%"></div></div>
           </div>
         </div>
-        <div class="char-icon" id="char-icon-archer">
-          <div class="char-portrait locked-portrait">🔒</div>
-          <div class="char-name">Okçu</div>
-          <div class="char-unlock-hint">Bölüm 10'da açılır</div>
+
+        <div class="char-wrapper" id="char-wrapper-archer">
+          <div class="skill-mini-icon hidden" id="skill-icon-archer"></div>
+          <div class="char-icon locked" id="char-icon-archer">
+            <div class="char-portrait locked-portrait">🔒</div>
+            <div class="char-name-level">
+              <span class="char-name">Okçu</span>
+              <span class="char-level locked-hint">Bl.5</span>
+            </div>
+          </div>
+          <div class="char-bars-outer faded">
+            <div class="char-hp-bar-wrap"><div class="char-hp-bar" style="width:0%"></div></div>
+            <div class="char-mana-bar-wrap"><div class="char-mana-bar" style="width:0%"></div></div>
+          </div>
         </div>
-        <div class="char-icon" id="char-icon-mage">
-          <div class="char-portrait locked-portrait">🔒</div>
-          <div class="char-name">Büyücü</div>
-          <div class="char-unlock-hint">Yakında</div>
+
+        <div class="char-wrapper" id="char-wrapper-mage">
+          <div class="skill-mini-icon hidden" id="skill-icon-mage"></div>
+          <div class="char-icon locked" id="char-icon-mage">
+            <div class="char-portrait locked-portrait">🔒</div>
+            <div class="char-name-level">
+              <span class="char-name">Büyücü</span>
+              <span class="char-level locked-hint">Yakında</span>
+            </div>
+          </div>
+          <div class="char-bars-outer faded">
+            <div class="char-hp-bar-wrap"><div class="char-hp-bar" style="width:0%"></div></div>
+            <div class="char-mana-bar-wrap"><div class="char-mana-bar" style="width:0%"></div></div>
+          </div>
         </div>
-        <div class="char-icon" id="char-icon-priest">
-          <div class="char-portrait locked-portrait">🔒</div>
-          <div class="char-name">Rahip</div>
-          <div class="char-unlock-hint">Yakında</div>
+
+        <div class="char-wrapper" id="char-wrapper-priest">
+          <div class="skill-mini-icon hidden" id="skill-icon-priest"></div>
+          <div class="char-icon locked" id="char-icon-priest">
+            <div class="char-portrait locked-portrait">🔒</div>
+            <div class="char-name-level">
+              <span class="char-name">Rahip</span>
+              <span class="char-level locked-hint">Yakında</span>
+            </div>
+          </div>
+          <div class="char-bars-outer faded">
+            <div class="char-hp-bar-wrap"><div class="char-hp-bar" style="width:0%"></div></div>
+            <div class="char-mana-bar-wrap"><div class="char-mana-bar" style="width:0%"></div></div>
+          </div>
         </div>
+
       </div>
 
       <div class="bottom-actions">
-        <button class="bottom-btn" id="chapter-select-btn">🗺️ Bölüm Seç</button>
-        <button class="bottom-btn" id="team-btn">⚔️ Ekip</button>
+        <button class="bottom-btn team-btn-center" id="team-btn">⚔️ Ekip</button>
       </div>
     </footer>
 
   </div><!-- /#game-root -->
-
-  <!-- ============ CHAPTER MODAL ============ -->
-  <div class="modal-overlay" id="chapter-modal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <div class="modal-title">🗺️ Bölüm Seç</div>
-        <button class="modal-close" id="chapter-modal-close">✕</button>
-      </div>
-      <div id="chapter-grid">
-        <!-- JS tarafından doldurulur -->
-      </div>
-    </div>
-  </div>
 
   <!-- ============ EKİP PANELİ ============ -->
   <div class="modal-overlay" id="team-panel">
@@ -127,11 +166,8 @@
         <div class="modal-title">⚔️ Ekip & İtemler</div>
         <button class="modal-close" id="team-panel-close">✕</button>
       </div>
-      <div id="team-chars">
-        <!-- JS tarafından doldurulur -->
-      </div>
+      <div id="team-chars"></div>
       <div id="char-detail">
-        <!-- Karakter seçince detay burada açılır -->
         <div style="text-align:center; color: var(--text-dim); font-size: 12px; padding: 20px 0;">
           Bir karaktere tıkla › detayları gör
         </div>
@@ -166,26 +202,70 @@
     <button id="restart-btn">🔄 Tekrar Başla</button>
   </div>
 
+
   <!-- ============ BİLDİRİM ALANI ============ -->
   <div id="notifications"></div>
 
   <!-- ============ SCRIPTLER ============ -->
-  <!-- Veri katmanı -->
   <script src="js/data/materials.js"></script>
   <script src="js/data/items.js"></script>
   <script src="js/data/characters.js"></script>
   <script src="js/data/monsters.js"></script>
-
-  <!-- Sistem -->
   <script src="js/save.js"></script>
-
-  <!-- UI -->
   <script src="js/ui/notifications.js"></script>
   <script src="js/ui/battle.js"></script>
   <script src="js/ui/team.js"></script>
-
-  <!-- Oyun motoru + başlatma -->
+  <script src="js/loot.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
 </body>
+
+<!-- ====== UPGRADE TOAST (sağdan kayar, game-root dışında) ====== -->
+<div id="upgrade-toast">
+  <div class="utoast-header">
+    <span class="utoast-label">⚡ Geliştirme Hazır!</span>
+    <button class="utoast-close" id="utoast-close">✕</button>
+  </div>
+  <div class="utoast-body">
+    <span class="utoast-item-icon" id="utoast-icon">⚔️</span>
+    <div class="utoast-info">
+      <div class="utoast-char-name" id="utoast-char">Savaşçı</div>
+      <div class="utoast-item-name" id="utoast-name">Kılıç</div>
+    </div>
+  </div>
+  <div class="utoast-stats">
+    <div class="utoast-stat-row">
+      <span>Lv.</span>
+      <span class="old" id="utoast-lv-old">1</span>
+      <span class="arr">→</span>
+      <span class="nw" id="utoast-lv-new">2</span>
+    </div>
+    <div class="utoast-stat-row">
+      <span id="utoast-stat-label">ATK:</span>
+      <span class="old" id="utoast-stat-old">5</span>
+      <span class="arr">→</span>
+      <span class="nw" id="utoast-stat-new">8</span>
+    </div>
+  </div>
+  <div class="utoast-cost" id="utoast-cost"></div>
+  <button class="utoast-btn" id="utoast-btn">⬆️ Geliştir</button>
+</div>
+
+<!-- ====== CHAPTER UNLOCK TOAST (soldan kayar, game-root dışında) ====== -->
+<div id="chapter-unlock-toast">
+  <div class="cuttoast-header">
+    <span class="cuttoast-label">🗺️ Yeni Bölüm Açıldı!</span>
+    <button class="cuttoast-close" id="cuttoast-close">✕</button>
+  </div>
+  <div class="cuttoast-body">
+    <span class="cuttoast-emoji" id="cuttoast-emoji">🫧</span>
+    <div class="cuttoast-info">
+      <div class="cuttoast-chapter" id="cuttoast-chapter">Bölüm 2</div>
+      <div class="cuttoast-monster" id="cuttoast-monster">Mavi Slime</div>
+      <div class="cuttoast-region" id="cuttoast-region">Slime Vadisi</div>
+    </div>
+  </div>
+  <button class="cuttoast-btn" id="cuttoast-go-btn">→ Hemen Git</button>
+</div>
+
 </html>

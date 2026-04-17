@@ -36,7 +36,7 @@ const CHARACTERS = {
     name: 'Okçu',
     icon: '🏹',
     portrait: '🧝',
-    unlocksAtChapter: 10, // Slime Kral (Ch.10 Boss) yenilince açılır
+    unlocksAtChapter: 5, // Büyük Slime (Ch.5 Mini Boss) yenilince açılır — demo
     role: 'Hızlı DPS',
     color: '#27ae60',
     baseStats: {
