@@ -2,7 +2,7 @@
 // SAVE.JS — localStorage kayıt/yükleme & offline kazanç
 // ============================================================
 
-const SAVE_KEY = 'idlerp_save_v1';
+const SAVE_KEY = 'idlerp_save_v2';  // v1'den v2'ye: archer Ch.5, HP restore on kill
 const AUTOSAVE_INTERVAL = 30000; // 30 saniye
 
 // Başlangıç save datası
@@ -95,7 +95,7 @@ function loadGame() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    if (!data || data.version !== 1) return null;
+    if (!data || typeof data.version === 'undefined') return null;
     return data;
   } catch (e) {
     console.error('Load failed:', e);

@@ -40,6 +40,16 @@ let gameState = {
   stats: {
     totalKills: 0,
     totalGold: 0
+  },
+
+  // Yeni açılan chapter'lar (bar'da pulse göstermek için)
+  pendingNewUnlocks: new Set(),
+
+  // Boss zaman sayıcı
+  bossTimer: {
+    active: false,
+    endsAt: null,
+    duration: 0   // saniye
   }
 };
 
@@ -105,8 +115,14 @@ function initGame() {
     offlineEarnings = calculateOfflineEarnings(saved.lastOnline, gameState);
   }
 
+  // Loot sistemini başlat
+  initLootSystem();
+
   // Otomatik kayıt başlat
   startAutosave(() => gameState);
+
+  // Geliştirme kontrol zamanlayıcısı (her 3 saniyede bir)
+  setInterval(checkAndShowUpgradeToast, 3000);
 
   // Savaşı başlat
   gameState.battle.running = true;
@@ -132,6 +148,14 @@ function spawnMonster(chapter) {
     currentHP: data.maxHP,
     nextAttackAt: Date.now() + data.attackSpeed
   };
+
+  // Boss / Mini Boss için geri sayım başlat
+  if (data.isBoss || data.isMinibow) {
+    startBossTimer(data);
+  } else {
+    // Normal canavar — timer'i durdur
+    gameState.bossTimer.active = false;
+  }
 }
 
 // ============ OYUN DÖNGÜSÜ ============
@@ -150,6 +174,14 @@ function gameLoop(timestamp) {
 
   // Efekt süre kontrolleri
   updateEffects(now);
+
+  // Boss timer kontrolü
+  if (gameState.bossTimer.active && now >= gameState.bossTimer.endsAt) {
+    gameState.bossTimer.active = false;
+    triggerBossEnrage();
+    requestAnimationFrame(gameLoop);
+    return;
+  }
 
   // Karakter saldırıları
   for (const charId of ACTIVE_CHARACTER_IDS) {
@@ -198,8 +230,15 @@ function performCharacterAttack(charId, now) {
   // Sonraki saldırı zamanı
   char.nextAttackAt = now + char.attackSpeed;
 
-  // Hasar animasyonu
+  // Hasar + efekt animasyonları
   showDamageNumber(damage, false);
+  showMonsterShake();
+  showSlashEffect('auto');
+
+  // Savaş sırasında rastgele küçük drop (%6 şans)
+  if (Math.random() < COMBAT_DROP_CHANCE) {
+    spawnCombatDrop();
+  }
 
   // Canavar öldü mü?
   if (monster.currentHP <= 0) {
@@ -215,27 +254,9 @@ function onMonsterDeath() {
 
   gameState.stats.totalKills++;
 
-  // Loot dağıt
+  // Loot — artık otomatik eklenmez, ekrana saçılır ve oyuncu toplar
   const loot = monster.loot;
-  gameState.inventory.gold += loot.gold;
-  gameState.stats.totalGold += loot.gold;
-
-  const materialsGained = {};
-  if (loot.woodChance && Math.random() < loot.woodChance) {
-    const amt = 1 + (monster.isBoss ? 3 : (monster.isMinibow ? 1 : 0));
-    gameState.inventory.wood += amt;
-    materialsGained.wood = amt;
-  }
-  if (loot.leatherChance && Math.random() < loot.leatherChance) {
-    const amt = 1 + (monster.isBoss ? 3 : (monster.isMinibow ? 1 : 0));
-    gameState.inventory.leather += amt;
-    materialsGained.leather = amt;
-  }
-  if (loot.ironChance && Math.random() < loot.ironChance) {
-    const amt = 1 + (monster.isBoss ? 2 : 0);
-    gameState.inventory.iron += amt;
-    materialsGained.iron = amt;
-  }
+  spawnKillLoot(loot, monster);
 
   // EXP dağıt (tüm canlı karakterlere)
   const exp = monster.exp;
@@ -246,36 +267,69 @@ function onMonsterDeath() {
     checkLevelUp(charId);
   }
 
-  // Chapter aç (boss yenildiyse)
+  // Canavar öldüğünde tüm karakterlerin HP'sini yenile + ölü olanları canlandır
+  for (const charId of ACTIVE_CHARACTER_IDS) {
+    const char = gameState.characters[charId];
+    if (!char.unlocked) continue;
+    const stats = getCharacterStats(charId, char.level, char.items.filter(Boolean));
+    if (char.isDead) {
+      // Ölü karakteri canlandır
+      char.isDead = false;
+      char.reviveReady = false;
+      char.reviveReadyAt = null;
+      char.currentHP = stats.hp;
+      char.maxHP = stats.hp;
+      char.currentMana = 0;
+      char.nextAttackAt = Date.now() + 1200;
+      showNotification(`⚛️ ${CHARACTERS[charId].name} savaşa geri döndü!`, 'revive');
+    } else {
+      // Canlı karakterin HP'sini tam yenile
+      char.currentHP = char.maxHP;
+    }
+  }
+
+  // Chapter aç (boss veya miniboss yenildiyse)
   if (monster.isBoss || monster.isMinibow) {
     const nextChapter = monster.chapter + 1;
     if (nextChapter <= 20 && nextChapter > gameState.highestUnlockedChapter) {
       gameState.highestUnlockedChapter = nextChapter;
-      showNotification(`🗺️ ${nextChapter > 10 ? 'Goblin Ormanı' : 'Slime Vadisi'} — Bölüm ${nextChapter} açıldı!`, 'chapter');
+      // Sol taraf toast + chapter bar pulse
+      setTimeout(() => {
+        showChapterUnlockToast(nextChapter);
+        markNewChapterUnlock(nextChapter);
+      }, 600); // ölüm efekti bittikten sonra
     }
     // Karakter açma
     if (monster.unlockCharacter) {
       unlockCharacter(monster.unlockCharacter);
     }
   } else {
-    // Normal canavar: sadece bir sonraki chapter kilidi
+    // Normal canavar: sonraki chapter kilidini aç
     const nextChapter = monster.chapter + 1;
     if (nextChapter <= 20 && nextChapter > gameState.highestUnlockedChapter) {
       gameState.highestUnlockedChapter = nextChapter;
+      // Sol taraf toast + chapter bar pulse
+      setTimeout(() => {
+        showChapterUnlockToast(nextChapter);
+        markNewChapterUnlock(nextChapter);
+      }, 600);
     }
   }
 
   // Item drop kontrolü
   checkItemDrop(monster.chapter);
 
-  // Loot bildirimi göster
-  showLootNotification(loot.gold, materialsGained);
+  // Canavar ölüm efekti (flash + particles + kill text)
+  showKillEffect(loot, monster);
+
+  // Chapter Bar güncelle (yeni unlock açıldıysa)
+  updateChapterSelector();
 
   // Aynı chapter'da yeni canavar spawn et (farming sistemi)
   setTimeout(() => {
     spawnMonster(gameState.currentChapter);
     renderAll();
-  }, 400);
+  }, 480);
 
   gameState.monster = null; // Kısa süreliğine null
   renderAll();
@@ -381,7 +435,80 @@ function reviveCharacter(charId) {
 // ============ YENİLGİ ============
 function triggerDefeat() {
   gameState.battle.defeated = true;
+  gameState.bossTimer.active = false;
   showDefeatScreen();
+}
+
+// ============ BOSS ENRAGE (süre dolarsa) ============
+function startBossTimer(bossData) {
+  // Ekip DPS hesapla
+  let totalDPS = 0;
+  for (const charId of ACTIVE_CHARACTER_IDS) {
+    const c = gameState.characters[charId];
+    if (!c.unlocked || c.isDead) continue;
+    const spd = CHARACTERS[charId].baseStats.attackSpeed;
+    totalDPS += c.atk / (spd / 1000);
+  }
+  if (totalDPS <= 0) totalDPS = 5;
+
+  // Beklenen süre × 1.8 katsayısı — min 60s, max 180s
+  const expectedSec = bossData.maxHP / totalDPS;
+  const duration    = Math.max(60, Math.min(180, Math.floor(expectedSec * 1.8)));
+
+  gameState.bossTimer = {
+    active: true,
+    endsAt: Date.now() + duration * 1000,
+    duration
+  };
+
+  showNotification(`⏱️ Boss timer: ${Math.floor(duration / 60)}:${String(duration % 60).padStart(2,'0')}`, 'death');
+}
+
+function triggerBossEnrage() {
+  const monster = gameState.monster;
+  const name    = monster ? monster.name : 'Boss';
+
+  // Tüm karakterleri öldür (ama defeat ekranı gösterme)
+  for (const charId of ACTIVE_CHARACTER_IDS) {
+    const c = gameState.characters[charId];
+    if (!c.unlocked || c.isDead) continue;
+    c.currentHP = 0;
+    c.isDead    = true;
+    c.reviveReady    = false;
+    c.reviveReadyAt  = null;
+    c.currentMana    = 0;
+  }
+
+  showNotification(`💥 ${name} TÜM EKİBİ YOK ETTİ! Savaş yeniden başlıyor...`, 'death');
+  renderAll();
+
+  // 1.8sn sonra boss + ekip HP'sini sıfırla ve yeniden başlat
+  setTimeout(() => {
+    resetBossFight();
+  }, 1800);
+}
+
+function resetBossFight() {
+  const chapter = gameState.currentChapter;
+
+  // Tüm karakterleri canlandır
+  for (const charId of ACTIVE_CHARACTER_IDS) {
+    const c = gameState.characters[charId];
+    if (!c.unlocked) continue;
+    const stats = getCharacterStats(charId, c.level, c.items.filter(Boolean));
+    c.isDead        = false;
+    c.reviveReady   = false;
+    c.reviveReadyAt = null;
+    c.currentHP     = stats.hp;
+    c.maxHP         = stats.hp;
+    c.currentMana   = 0;
+    c.nextAttackAt  = Date.now() + 1500;
+  }
+
+  // Boss'u yeniden spawn et (HP sıfırlanır)
+  gameState.effects = { taunt: null, poisonArrow: null, taunted: false };
+  spawnMonster(chapter);
+  renderAll();
 }
 
 function restartBattle() {
@@ -401,6 +528,7 @@ function restartBattle() {
 
   gameState.effects = { taunt: null, poisonArrow: null, taunted: false };
   gameState.battle.defeated = false;
+  gameState.bossTimer.active = false;
 
   spawnMonster(gameState.currentChapter);
   hideDefeatScreen();
@@ -412,8 +540,10 @@ function switchChapter(chapter) {
   if (chapter > gameState.highestUnlockedChapter) return;
   if (chapter < 1 || chapter > 20) return;
 
+  clearAllLoot(); // Chapter değişince ekrandaki lootları temizle
   gameState.currentChapter = chapter;
   gameState.effects = { taunt: null, poisonArrow: null, taunted: false };
+  gameState.bossTimer.active = false;  // Önceki boss timer'i durdur
   spawnMonster(chapter);
   renderAll();
   updateChapterSelector();
@@ -434,19 +564,30 @@ function useSkill(charId) {
 
   if (skill.effect === 'taunt') {
     gameState.effects.taunt = { endsAt: now + skill.duration };
+    showSlashEffect('skill');
+    showMonsterShake();
     showNotification(`🛡️ Taunt! Canavar 4sn boyunca sadece Savaşçı'ya vuruyor.`, 'skill');
   } else if (skill.effect === 'poisonArrow') {
-    // Önce 2x hasar ver
     const normalDmg = Math.max(1, char.atk);
     const harm = normalDmg * 2;
     gameState.monster.currentHP = Math.max(0, gameState.monster.currentHP - harm);
     showDamageNumber(harm, false, true);
+    showSlashEffect('skill');
+    showMonsterShake();
     gameState.effects.poisonArrow = { endsAt: now + skill.duration };
     showNotification(`☠️ Zehirli Ok! Canavar 5sn boyunca %10 fazla hasar alıyor.`, 'skill');
     if (gameState.monster.currentHP <= 0) {
       onMonsterDeath();
       return;
     }
+  }
+
+  // Mini-icon slide-back animasyonu
+  const skillMini = document.getElementById(`skill-icon-${charId}`);
+  if (skillMini) {
+    skillMini.classList.remove('visible');
+    skillMini.classList.add('sliding-back');
+    setTimeout(() => skillMini.classList.remove('sliding-back'), 300);
   }
 
   renderAll();
@@ -575,22 +716,33 @@ function upgradeItem(charId, slotIndex) {
 function playerClickMonster() {
   if (!gameState.monster || !gameState.battle.running || gameState.battle.defeated) return;
 
-  // Toplam ekip ATK'nın %5'i
+  // Toplamekip ATK'sının %25'i + her level başına flat bonus
+  const living = ACTIVE_CHARACTER_IDS.filter(id => {
+    const c = gameState.characters[id];
+    return c.unlocked && !c.isDead;
+  });
+  if (living.length === 0) return;
+
   let totalATK = 0;
-  for (const charId of ACTIVE_CHARACTER_IDS) {
+  let totalLevel = 0;
+  for (const charId of living) {
     const c = gameState.characters[charId];
-    if (c.unlocked && !c.isDead) totalATK += c.atk;
+    totalATK   += c.atk;
+    totalLevel += c.level;
   }
-  const clickDamage = Math.max(1, Math.floor(totalATK * 0.05));
+  const avgLevel        = Math.floor(totalLevel / living.length);
+  const baseClickDmg    = Math.max(1, Math.floor(totalATK * 0.25));
+  const levelBonus      = avgLevel * 2;
+  let clickDamage       = baseClickDmg + levelBonus;
 
-  // Zehirli ok aktifse
-  let dmg = clickDamage;
+  // Zehirli ok aktifse bonus
   if (gameState.effects.poisonArrow && Date.now() < gameState.effects.poisonArrow.endsAt) {
-    dmg = Math.floor(dmg * 1.1);
+    clickDamage = Math.floor(clickDamage * 1.1);
   }
 
-  gameState.monster.currentHP = Math.max(0, gameState.monster.currentHP - dmg);
-  showDamageNumber(dmg, true);
+  gameState.monster.currentHP = Math.max(0, gameState.monster.currentHP - clickDamage);
+  showDamageNumber(clickDamage, true);
+  showSlashEffect('click');
 
   if (gameState.monster.currentHP <= 0) {
     onMonsterDeath();
