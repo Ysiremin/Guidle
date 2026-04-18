@@ -2,7 +2,7 @@
 // SAVE.JS — localStorage kayıt/yükleme & offline kazanç
 // ============================================================
 
-const SAVE_KEY = 'idlerp_save_v2';  // v1'den v2'ye: archer Ch.5, HP restore on kill
+const SAVE_KEY = 'idlerp_save_v3';  // v3: Güç Artışları upgrade sistemi eklendi
 const AUTOSAVE_INTERVAL = 30000; // 30 saniye
 
 // Başlangıç save datası
@@ -79,6 +79,17 @@ function saveGame(gameState) {
         unlocked: char.unlocked,
         items: char.items.map(item => item ? { itemId: item.itemId, level: item.level } : null)
       };
+    }
+
+    // Upgrade'leri kaydet
+    data.upgrades = { click: {}, auto: {} };
+    if (gameState.upgrades) {
+      for (const u of CLICK_UPGRADES) {
+        data.upgrades.click[u.id] = { ...gameState.upgrades.click[u.id] };
+      }
+      for (const u of AUTO_UPGRADES) {
+        data.upgrades.auto[u.id] = { ...gameState.upgrades.auto[u.id] };
+      }
     }
 
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));

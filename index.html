@@ -159,6 +159,9 @@
 
   </div><!-- /#game-root -->
 
+  <!-- ⚡ GÜÇ ARTIŞLARI SABİT BUTONU (game-root dışında, fixed) -->
+  <button id="power-btn" title="Güç Artışları">⚡<span>Güç</span></button>
+
   <!-- ============ EKİP PANELİ ============ -->
   <div class="modal-overlay" id="team-panel">
     <div class="modal-box">
@@ -206,15 +209,35 @@
   <!-- ============ BİLDİRİM ALANI ============ -->
   <div id="notifications"></div>
 
+  <!-- ============ GÜÇ ARTIŞLARI PANELİ ============ -->
+  <div id="power-panel-overlay">
+    <div id="power-panel">
+      <div class="pp-header">
+        <div class="pp-title">⚡ Güç Artışları</div>
+        <button class="pp-close" id="power-panel-close">✕</button>
+      </div>
+      <div class="pp-totals">
+        <div class="pp-total-row" id="pp-click-total">⚔️ Click Hasarı Bonusu: +0</div>
+        <div class="pp-total-row" id="pp-auto-total">🗡️ Auto Hasar Bonusu: +0</div>
+      </div>
+      <div class="pp-section-title">⚔️ Click Hasarı Yükseltmeleri</div>
+      <div class="pp-list" id="pp-click-list"></div>
+      <div class="pp-section-title">🗡️ Auto Hasar Yükseltmeleri</div>
+      <div class="pp-list" id="pp-auto-list"></div>
+    </div>
+  </div>
+
   <!-- ============ SCRIPTLER ============ -->
   <script src="js/data/materials.js"></script>
   <script src="js/data/items.js"></script>
   <script src="js/data/characters.js"></script>
   <script src="js/data/monsters.js"></script>
   <script src="js/save.js"></script>
+  <script src="js/upgrades.js"></script>
   <script src="js/ui/notifications.js"></script>
   <script src="js/ui/battle.js"></script>
   <script src="js/ui/team.js"></script>
+  <script src="js/ui/upgrades-panel.js"></script>
   <script src="js/loot.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>

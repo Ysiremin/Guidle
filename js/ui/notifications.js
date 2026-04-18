@@ -2,6 +2,79 @@
 // UI/NOTIFICATIONS.JS — Bildirimler, efektler, animasyonlar
 // ============================================================
 
+// ============ RED DOT (BADGE) SİSTEMİ ============
+
+// Herhangi bir buton/eleman üzerindeki badge-dot'u göster/gizle
+function _setBadgeDot(el, show) {
+  if (!el) return;
+  const existing = el.querySelector(':scope > .badge-dot');
+  if (show && !existing) {
+    const dot = document.createElement('span');
+    dot.className = 'badge-dot';
+    el.appendChild(dot);
+  } else if (!show && existing) {
+    existing.remove();
+  }
+}
+
+// Belirli karakter için geliştirilebilir item var mı?
+function _charHasUpgrade(charId) {
+  const char = gameState?.characters?.[charId];
+  if (!char || !char.unlocked) return false;
+  const inv = gameState.inventory;
+  for (const equip of char.items) {
+    if (!equip) continue;
+    const item = ITEMS[equip.itemId];
+    if (!item) continue;
+    const costs = item.upgradeCosts(equip.level);
+    if (Object.entries(costs).every(([mat, amt]) => (inv[mat] || 0) >= amt)) return true;
+  }
+  return false;
+}
+
+// Ekip panelinde geliştirilebilir bir şey var mı?
+function _teamHasUpgrade() {
+  if (!gameState) return false;
+  return ACTIVE_CHARACTER_IDS.some(id => _charHasUpgrade(id));
+}
+
+// Güç panelinde satın alınabilir upgrade var mı?
+function _powerHasUpgrade() {
+  if (!gameState?.upgrades) return false;
+  const gold = gameState.inventory.gold;
+  for (const u of CLICK_UPGRADES) {
+    if (gold >= (gameState.upgrades.click[u.id]?.cost ?? u.baseCost)) return true;
+  }
+  for (const u of AUTO_UPGRADES) {
+    if (gold >= (gameState.upgrades.auto[u.id]?.cost ?? u.baseCost)) return true;
+  }
+  return false;
+}
+
+// Tüm badge-dot'ları güncelle — renderInventory'den çağrılır
+function updateRedDots() {
+  if (!gameState) return;
+
+  // ⚔️ Ekip butonu
+  _setBadgeDot(document.getElementById('team-btn'), _teamHasUpgrade());
+
+  // ⚡ Güç butonu
+  _setBadgeDot(document.getElementById('power-btn'), _powerHasUpgrade());
+
+  // Ekip paneli açıksa — karakter kartlarını güncelle
+  const teamPanel = document.getElementById('team-panel');
+  if (teamPanel?.classList.contains('show')) {
+    for (const charId of ACTIVE_CHARACTER_IDS) {
+      const card = document.getElementById(`team-card-${charId}`);
+      _setBadgeDot(card, _charHasUpgrade(charId));
+    }
+  }
+}
+
+// Dışarıdan erişim için (team.js'ten çağrılır)
+function charHasUpgrade(charId) { return _charHasUpgrade(charId); }
+
+
 function showNotification(message, type = 'info') {
   const container = document.getElementById('notifications');
   if (!container) return;

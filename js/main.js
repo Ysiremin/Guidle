@@ -73,6 +73,24 @@ function initUI() {
     });
   }
 
+  // ===== GÜÇ ARTIŞLARI PANELİ =====
+  const powerBtn = document.getElementById('power-btn');
+  if (powerBtn) {
+    powerBtn.addEventListener('click', openPowerPanel);
+  }
+
+  const powerClose = document.getElementById('power-panel-close');
+  if (powerClose) {
+    powerClose.addEventListener('click', closePowerPanel);
+  }
+
+  const powerOverlay = document.getElementById('power-panel-overlay');
+  if (powerOverlay) {
+    powerOverlay.addEventListener('click', (e) => {
+      if (e.target === powerOverlay) closePowerPanel();
+    });
+  }
+
   // ===== OFFLİNE POPUP =====
   const collectBtn = document.getElementById('offline-collect-btn');
   if (collectBtn) {

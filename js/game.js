@@ -50,7 +50,10 @@ let gameState = {
     active: false,
     endsAt: null,
     duration: 0   // saniye
-  }
+  },
+
+  // Güç Artışları (upgrades)
+  upgrades: null  // initGame'de getDefaultUpgrades() ile doldurulur
 };
 
 // ============ INIT ============
@@ -59,11 +62,27 @@ function initGame() {
   const saved = loadGame();
   const isFirstRun = !saved;
 
+  // Upgrade state başlat (her zaman default ile başla, sonra üstüne yükle)
+  gameState.upgrades = getDefaultUpgrades();
+
   if (saved) {
     gameState.currentChapter = saved.progress.currentChapter || 1;
     gameState.highestUnlockedChapter = saved.progress.highestUnlockedChapter || 1;
     gameState.inventory = { ...saved.inventory };
     gameState.droppedItems = saved.droppedItems || [];
+    // Upgrade'leri kayıttan yükle
+    if (saved.upgrades) {
+      for (const u of CLICK_UPGRADES) {
+        if (saved.upgrades.click?.[u.id]) {
+          gameState.upgrades.click[u.id] = { ...saved.upgrades.click[u.id] };
+        }
+      }
+      for (const u of AUTO_UPGRADES) {
+        if (saved.upgrades.auto?.[u.id]) {
+          gameState.upgrades.auto[u.id] = { ...saved.upgrades.auto[u.id] };
+        }
+      }
+    }
   } else {
     const def = getDefaultSave();
     gameState.inventory = { ...def.inventory };
@@ -104,6 +123,25 @@ function initGame() {
       reviveReady: false
     };
     gameState.reviveCooldowns[charId] = null;
+  }
+
+  // Auto bonus'u yüklenmiş upgrade'lere göre uygula
+  applyAutoBonus();
+
+  // Savaşçı baştan açık — kılıcı (slot 0) ile birlikte başlasın
+  if (isFirstRun) {
+    const warriorStarterItemId = CHARACTERS['warrior'].itemSlots?.[0]; // 'sword'
+    if (warriorStarterItemId && !gameState.droppedItems.includes(warriorStarterItemId)) {
+      gameState.droppedItems.push(warriorStarterItemId);
+      const warriorState = gameState.characters['warrior'];
+      warriorState.items[0] = { itemId: warriorStarterItemId, level: 1 };
+      // Stat’ları güncelle
+      const ws = getCharacterStats('warrior', warriorState.level, warriorState.items.filter(Boolean));
+      warriorState.atk = ws.atk;
+      warriorState.def = ws.def;
+      warriorState.maxHP = ws.hp;
+      warriorState.currentHP = ws.hp;
+    }
   }
 
   // Canavari spawn et
@@ -267,6 +305,10 @@ function onMonsterDeath() {
     checkLevelUp(charId);
   }
 
+  // Canavar öldüğünde tüm aktif efektleri sıfırla
+  // (zehir, taunt vs. bir sonraki canavardan başlamasın)
+  gameState.effects = { taunt: null, poisonArrow: null, taunted: false };
+
   // Canavar öldüğünde tüm karakterlerin HP'sini yenile + ölü olanları canlandır
   for (const charId of ACTIVE_CHARACTER_IDS) {
     const char = gameState.characters[charId];
@@ -299,10 +341,8 @@ function onMonsterDeath() {
         markNewChapterUnlock(nextChapter);
       }, 600); // ölüm efekti bittikten sonra
     }
-    // Karakter açma
-    if (monster.unlockCharacter) {
-      unlockCharacter(monster.unlockCharacter);
-    }
+    // Karakter açma: CHAPTER_REWARDS üzerinden yönetiliyor
+    // (monster.unlockCharacter artık kullanılmıyor)
   } else {
     // Normal canavar: sonraki chapter kilidini aç
     const nextChapter = monster.chapter + 1;
@@ -316,8 +356,8 @@ function onMonsterDeath() {
     }
   }
 
-  // Item drop kontrolü
-  checkItemDrop(monster.chapter);
+  // Chapter ödülleri: item + karakter açılışı (yeni sistem)
+  applyChapterRewards(monster.chapter);
 
   // Canavar ölüm efekti (flash + particles + kill text)
   showKillEffect(loot, monster);
@@ -540,10 +580,28 @@ function switchChapter(chapter) {
   if (chapter > gameState.highestUnlockedChapter) return;
   if (chapter < 1 || chapter > 20) return;
 
-  clearAllLoot(); // Chapter değişince ekrandaki lootları temizle
+  // Ekrandaki lootları otomatik topla (kaybetme)
+  collectAllLoot();
+
   gameState.currentChapter = chapter;
+  // Aktif efektleri sıfırla
   gameState.effects = { taunt: null, poisonArrow: null, taunted: false };
-  gameState.bossTimer.active = false;  // Önceki boss timer'i durdur
+  gameState.bossTimer.active = false;
+
+  // Tüm karakterleri sıfırla: HP, mana, ölüm durumu
+  for (const charId of ACTIVE_CHARACTER_IDS) {
+    const char = gameState.characters[charId];
+    if (!char.unlocked) continue;
+    const stats = getCharacterStats(charId, char.level, char.items.filter(Boolean));
+    char.currentHP  = stats.hp;
+    char.maxHP      = stats.hp;
+    char.currentMana = 0;
+    char.isDead      = false;
+    char.reviveReady = false;
+    char.reviveReadyAt = null;
+    char.nextAttackAt  = Date.now() + 1000;
+  }
+
   spawnMonster(chapter);
   renderAll();
   updateChapterSelector();
@@ -615,7 +673,7 @@ function checkLevelUp(charId) {
     const hpDiff = stats.hp - char.maxHP;
     char.maxHP = stats.hp;
     char.currentHP = Math.min(char.maxHP, char.currentHP + hpDiff);
-    char.atk = stats.atk;
+    char.atk = stats.atk + getTotalAutoBonus();
     char.def = stats.def;
     char.maxMana = stats.manaMax;
     showNotification(`⬆️ ${CHARACTERS[charId].name} seviye ${char.level}'e ulaştı!`, 'levelup');
@@ -627,27 +685,44 @@ function unlockCharacter(charId) {
   const char = gameState.characters[charId];
   if (char.unlocked) return;
   char.unlocked = true;
-  const stats = getCharacterStats(charId, char.level, []);
+
+  // İlk item (slot 0) otomatik takılı gelir
+  const starterItemId = CHARACTERS[charId].itemSlots?.[0];
+  if (starterItemId && !gameState.droppedItems.includes(starterItemId)) {
+    gameState.droppedItems.push(starterItemId);
+    char.items[0] = { itemId: starterItemId, level: 1 };
+  }
+
+  const stats = getCharacterStats(charId, char.level, char.items.filter(Boolean));
   char.currentHP = stats.hp;
   char.maxHP = stats.hp;
   char.currentMana = 0;
   char.maxMana = stats.manaMax;
-  char.atk = stats.atk;
+  char.atk = stats.atk + getTotalAutoBonus();
   char.def = stats.def;
   char.nextAttackAt = Date.now() + 2000;
-  showNotification(`🎉 ${CHARACTERS[charId].name} ekibe katıldı!`, 'unlock');
+
+  const item = starterItemId ? ITEMS[starterItemId] : null;
+  const itemText = item ? ` (${item.icon} ${item.name} ile)` : '';
+  showNotification(`🎉 ${CHARACTERS[charId].name} ekibe katıldı${itemText}!`, 'unlock');
 }
 
-// ============ ITEM DROP ============
-function checkItemDrop(chapter) {
-  // Bu chapter'da drop olacak itemler
-  for (const [itemId, dropChapter] of Object.entries(ITEM_DROP_CHAPTERS)) {
-    if (chapter !== dropChapter) continue;
-    if (gameState.droppedItems.includes(itemId)) continue;
-    // %30 şans her öldürmede, boss/miniboss garanti
-    const monster = MONSTERS[chapter];
-    const guaranteed = monster.isBoss || monster.isMinibow;
-    if (guaranteed || Math.random() < 0.3) {
+// ============ CHAPTER ÖDÜLLERİ (item + karakter açılışı) ============
+function applyChapterRewards(chapter) {
+  const reward = CHAPTER_REWARDS[chapter];
+  if (!reward) return;
+
+  // Karakter açılışı
+  if (reward.unlockChar) {
+    const char = gameState.characters[reward.unlockChar];
+    if (char && !char.unlocked) {
+      unlockCharacter(reward.unlockChar);
+    }
+  }
+
+  // Item’lar garanti verilir (bir kez)
+  for (const itemId of reward.items) {
+    if (!gameState.droppedItems.includes(itemId)) {
       giveItem(itemId);
     }
   }
@@ -669,7 +744,7 @@ function giveItem(itemId) {
   const hpDiff = stats.hp - charState.maxHP;
   charState.maxHP = stats.hp;
   charState.currentHP = Math.min(charState.maxHP, charState.currentHP + Math.max(0, hpDiff));
-  charState.atk = stats.atk;
+  charState.atk = stats.atk + getTotalAutoBonus();
   charState.def = stats.def;
 
   showNotification(`🎁 ${item.icon} ${item.name} kazanıldı! (${CHARACTERS[item.characterId].name})`, 'item');
@@ -704,7 +779,7 @@ function upgradeItem(charId, slotIndex) {
   const hpDiff = stats.hp - charState.maxHP;
   charState.maxHP = stats.hp;
   charState.currentHP = Math.min(charState.maxHP, charState.currentHP + Math.max(0, hpDiff));
-  charState.atk = stats.atk;
+  charState.atk = stats.atk + getTotalAutoBonus();
   charState.def = stats.def;
 
   showNotification(`⬆️ ${item.icon} ${item.name} +${equip.level} seviyeye yükseltildi!`, 'upgrade');
@@ -733,7 +808,7 @@ function playerClickMonster() {
   const avgLevel        = Math.floor(totalLevel / living.length);
   const baseClickDmg    = Math.max(1, Math.floor(totalATK * 0.25));
   const levelBonus      = avgLevel * 2;
-  let clickDamage       = baseClickDmg + levelBonus;
+  let clickDamage       = baseClickDmg + levelBonus + getTotalClickBonus();
 
   // Zehirli ok aktifse bonus
   if (gameState.effects.poisonArrow && Date.now() < gameState.effects.poisonArrow.endsAt) {

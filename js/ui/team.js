@@ -60,6 +60,11 @@ function renderTeamPanel() {
     }
 
     container.appendChild(card);
+
+    // Badge-dot: bu karakterde geliştirilebilir item varsa
+    if (char.unlocked) {
+      _setBadgeDot(card, charHasUpgrade(charId));
+    }
   }
 
   // Seçili karakter detayı
@@ -189,6 +194,7 @@ function renderItemSlot(charId, slotIndex) {
         data-char="${charId}" data-slot="${slotIndex}">
         ${canUpgrade ? '⬆️ Geliştir' : '🔒 Yetersiz'}
       </button>
+      ${canUpgrade ? '<span class="badge-dot"></span>' : ''}
     </div>
   `;
 }

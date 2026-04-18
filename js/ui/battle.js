@@ -188,6 +188,9 @@ function renderInventory() {
     return sum + (c.unlocked ? c.level : 0);
   }, 0);
   if (el('total-level')) el('total-level').textContent = `Güç: ${totalLevel}`;
+
+  // Badge-dot'ları güncelle (materyal/altın değişince butonlar da güncellenir)
+  updateRedDots();
 }
 
 // ============ AKTİF EFEKTLER ============

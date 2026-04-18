@@ -36,7 +36,7 @@ const CHARACTERS = {
     name: 'Okçu',
     icon: '🏹',
     portrait: '🧝',
-    unlocksAtChapter: 5, // Büyük Slime (Ch.5 Mini Boss) yenilince açılır — demo
+    unlocksAtChapter: 3, // Ch.3 sonunda CHAPTER_REWARDS ile açılır
     role: 'Hızlı DPS',
     color: '#27ae60',
     baseStats: {
@@ -69,7 +69,7 @@ const CHARACTERS = {
     name: 'Büyücü',
     icon: '🔮',
     portrait: '🧙‍♂️',
-    unlocksAtChapter: 999,
+    unlocksAtChapter: 5, // Ch.5 sonunda CHAPTER_REWARDS ile açılır
     role: 'Yavaş / Yüksek Hasar',
     color: '#8e44ad',
     locked: true,
@@ -91,7 +91,7 @@ const CHARACTERS = {
     name: 'Rahip',
     icon: '✨',
     portrait: '👼',
-    unlocksAtChapter: 999,
+    unlocksAtChapter: 10, // Ch.10 sonunda CHAPTER_REWARDS ile açılır
     role: 'Destek + Saldırı',
     color: '#f39c12',
     locked: true,

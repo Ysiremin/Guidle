@@ -627,8 +627,45 @@ html, body {
   padding: 6px 24px;
   transition: all 0.2s;
   letter-spacing: 0.04em;
+  position: relative; /* badge-dot için */
 }
 .team-btn-center:hover { box-shadow: 0 0 12px rgba(90, 143, 220, 0.3); }
+
+/* ============ BADGE DOT (kırmızı bildirim noktası) ============ */
+.badge-dot {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 11px;
+  height: 11px;
+  background: #e53935;
+  border-radius: 50%;
+  border: 2px solid var(--bg-deep);
+  pointer-events: none;
+  z-index: 20;
+  animation: badgePulse 1.4s ease-in-out infinite;
+}
+
+/* power-btn'deki dot: sol üst köşededir (sağ kenarda olduğundan) */
+#power-btn .badge-dot {
+  top: -5px;
+  left: -5px;
+  right: auto;
+}
+
+/* team-char-card içindeki dot */
+.team-char-card { position: relative; }
+.team-char-card .badge-dot { top: -4px; right: -4px; }
+
+/* item-slot içindeki dot */
+.item-slot { position: relative; }
+.item-slot .badge-dot { top: -4px; right: -4px; width: 9px; height: 9px; }
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.6); }
+  50%       { transform: scale(1.2); box-shadow: 0 0 0 4px rgba(229, 57, 53, 0); }
+}
+
 
 /* ============ MODAL OVERLAY ============ */
 .modal-overlay {
@@ -1384,7 +1421,7 @@ html, body {
 /* ============ BOSS TIMER ============ */
 #boss-timer-wrap {
   position: absolute;
-  top: 6px;
+  top: 30px;
   left: 50%;
   transform: translateX(-50%);
   width: 85%;
@@ -1500,3 +1537,251 @@ html, body {
   #monster-emoji-wrap { width: 110px; height: 110px; }
   .char-portrait { font-size: 24px; }
 }
+
+/* ============================================================
+   GÜÇ ARTIŞLARI — SABİT BUTON
+   ============================================================ */
+#power-btn {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 800;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 6px;
+  background: linear-gradient(160deg, #1a1060 0%, #0e0830 100%);
+  border: 1px solid var(--purple);
+  border-right: none;
+  border-radius: 10px 0 0 10px;
+  color: var(--purple-light);
+  cursor: pointer;
+  font-size: 18px;
+  font-family: var(--font-body);
+  box-shadow: -4px 0 20px rgba(120, 80, 230, 0.3);
+  transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+  /* badge-dot için */
+  overflow: visible;
+}
+#power-btn span {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--purple-light);
+  text-transform: uppercase;
+}
+#power-btn:hover {
+  background: linear-gradient(160deg, #2a1a90 0%, #180e50 100%);
+  box-shadow: -6px 0 28px rgba(150, 100, 255, 0.5);
+  color: #fff;
+}
+#power-btn:hover span { color: #fff; }
+
+/* ============================================================
+   GÜÇ ARTIŞLARI — PANEL OVERLAY
+   ============================================================ */
+#power-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 900;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  display: flex;
+  justify-content: flex-end;
+}
+#power-panel-overlay.show {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ============================================================
+   GÜÇ ARTIŞLARI — PANEL GÖVDE
+   ============================================================ */
+#power-panel {
+  width: 300px;
+  max-width: 92vw;
+  height: 100%;
+  background: linear-gradient(180deg, #09081a 0%, #0c0b20 100%);
+  border-left: 1px solid var(--border-glow);
+  box-shadow: -8px 0 40px rgba(80, 40, 200, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+#power-panel-overlay.show #power-panel {
+  transform: translateX(0);
+}
+
+/* Başlık */
+.pp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: rgba(30, 20, 70, 0.5);
+}
+.pp-title {
+  font-family: var(--font-title);
+  font-size: 15px;
+  color: var(--purple-light);
+  letter-spacing: 0.06em;
+}
+.pp-close {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 3px 8px;
+  transition: all 0.15s;
+}
+.pp-close:hover { border-color: var(--red); color: var(--red); }
+
+/* Toplam bonus özeti */
+.pp-totals {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(20, 15, 50, 0.6);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.pp-total-row {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 0.02em;
+}
+
+/* Bölüm başlığı */
+.pp-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 10px 14px 5px;
+  flex-shrink: 0;
+}
+
+/* Liste alanı */
+.pp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 10px 10px;
+  overflow-y: auto;
+}
+.pp-list:last-child { flex: 1; }
+
+/* Upgrade kartı */
+.pp-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 9px 10px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.pp-card.pp-can-buy {
+  border-color: rgba(120, 80, 220, 0.35);
+  background: linear-gradient(135deg, #12102a, #1a1440);
+}
+.pp-card.pp-can-buy:hover {
+  border-color: var(--purple);
+  background: linear-gradient(135deg, #181460, #1e1650);
+}
+
+.pp-card-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.pp-card-icon { font-size: 20px; flex-shrink: 0; }
+.pp-card-info { flex: 1; min-width: 0; }
+.pp-card-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pp-card-count {
+  font-size: 10px;
+  color: var(--purple-light);
+  font-weight: 400;
+  margin-left: 4px;
+}
+.pp-card-bonus {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 1px;
+}
+
+/* Satın al butonu */
+.pp-buy-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 9px;
+  background: linear-gradient(135deg, #1a3a22, #0d2212);
+  border: 1px solid var(--green);
+  border-radius: var(--radius-sm);
+  color: #c8e6c9;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  transition: all 0.18s;
+  min-width: 62px;
+  flex-shrink: 0;
+}
+.pp-buy-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1f5c29, #0f3a18);
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.35);
+}
+.pp-buy-btn:active:not(:disabled) { transform: scale(0.95); }
+
+.pp-btn-cost { font-size: 9px; color: var(--gold); }
+.pp-btn-label { font-size: 10px; }
+
+.pp-btn-disabled,
+.pp-buy-btn:disabled {
+  background: var(--bg-card);
+  border-color: var(--border);
+  color: var(--text-dim);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.pp-btn-disabled .pp-btn-cost { color: var(--text-dim); }
+
+/* Satın alındı anlık geri bildirim */
+.pp-btn-bought {
+  background: linear-gradient(135deg, var(--green-dark), #1b5e20) !important;
+  box-shadow: 0 0 14px rgba(76, 175, 80, 0.6) !important;
+  transform: scale(1.08) !important;
+}
+
+/* Panel içi scrollbar */
+#power-panel ::-webkit-scrollbar { width: 3px; }
+#power-panel ::-webkit-scrollbar-track { background: transparent; }
+#power-panel ::-webkit-scrollbar-thumb { background: var(--purple-dark); border-radius: 2px; }
+

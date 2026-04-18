@@ -210,11 +210,41 @@ function _expireLoot(lootRef) {
   setTimeout(() => el.remove(), 750);
 }
 
-// ============ TOPLU TEMİZLE ============
+// ============ TOPLU TEMİZLE (sadece görsel — reset için) ============
 function clearAllLoot() {
   for (const item of activeLootItems) {
     clearTimeout(item.expireTimer);
     item.el.remove();
   }
   activeLootItems = [];
+}
+
+// ============ TOPLU TOPLA (chapter geçişi — kaybetme) ============
+function collectAllLoot() {
+  if (activeLootItems.length === 0) return;
+
+  let goldTotal = 0;
+  const matTotals = {};
+
+  for (const item of activeLootItems) {
+    clearTimeout(item.expireTimer);
+    item.el.remove();
+    if (item.type === 'gold') {
+      goldTotal += item.amount;
+    } else {
+      matTotals[item.type] = (matTotals[item.type] || 0) + item.amount;
+    }
+  }
+  activeLootItems = [];
+
+  // Inventory'e ekle
+  if (goldTotal > 0) {
+    gameState.inventory.gold     += goldTotal;
+    gameState.stats.totalGold    += goldTotal;
+  }
+  for (const [type, amount] of Object.entries(matTotals)) {
+    gameState.inventory[type] = (gameState.inventory[type] || 0) + amount;
+  }
+
+  renderInventory();
 }

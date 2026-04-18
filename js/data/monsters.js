@@ -208,14 +208,37 @@ function getRegionName(chapter) {
   return 'Bilinmeyen Bölge';
 }
 
-// Item drop chapter listesi
-const ITEM_DROP_CHAPTERS = {
-  sword: 1,
-  shield: 3,
-  armor: 6,
-  helmet: 9,
-  bow: 11,
-  arrow: 13,
-  leatherArmor: 15,
-  gloves: 18
+// ============================================================
+// CHAPTER SONUNDA NE AÇILIR
+//
+// Her chapter yenilince (monster ölünce, normal/boss fark etmez)
+// aşağıdaki tabloya bakılır.
+//
+// CHAPTER_REWARDS[chapter] = {
+//   unlockChar: 'charId' | null   ← o chapter sonunda açılacak karakter
+//   items: ['itemId', ...]         ← verilecek item(lar) (hepsi garanti)
+// }
+// ============================================================
+
+const CHAPTER_REWARDS = {
+   1: { unlockChar: null,      items: [] },              // Savaşçı baştan açık, kılıç ile gelir
+   2: { unlockChar: null,      items: ['shield'] },       // Savaşçının kalkanı
+   3: { unlockChar: 'archer',  items: [] },              // Okçu yayı ile birlikte açılır
+   4: { unlockChar: null,      items: ['arrow'] },        // Okçunun ok kılıfı
+   5: { unlockChar: 'mage',    items: [] },              // Büyücü asası ile birlikte açılır
+   6: { unlockChar: null,      items: ['spellbook'] },    // Büyücünün büyü kitabı
+   7: { unlockChar: null,      items: ['armor'] },        // Savaşçının zırhı
+   8: { unlockChar: null,      items: ['leatherArmor'] }, // Okçunun deri zırhı
+   9: { unlockChar: null,      items: ['robe'] },         // Büyücünün cübbesi
+  10: { unlockChar: 'priest',  items: [] },              // Rahip kutsal asası ile birlikte açılır
+  11: { unlockChar: null,      items: ['holyBook'] },     // Rahibin kutsal kitabı
+  12: { unlockChar: null,      items: ['helmet'] },       // Savaşçının miğferi
+  13: { unlockChar: null,      items: ['gloves'] },       // Okçunun eldiveni
+  14: { unlockChar: null,      items: ['necklace'] },     // Büyücünün kolyesi
+  15: { unlockChar: null,      items: ['cowl'] },         // Rahibin başlığı
+  16: { unlockChar: null,      items: ['ring'] },         // Rahibin yüzüğü
 };
+
+// Eski ITEM_DROP_CHAPTERS — artık kullanılmıyor, uyumluluk için boş bırakıldı
+const ITEM_DROP_CHAPTERS = {};
+
